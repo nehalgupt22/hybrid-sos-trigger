@@ -1,29 +1,34 @@
 import pandas as pd
 import numpy as np
+import random
+import time
 
-data = pd.read_csv("train1.csv")
+data = pd.read_csv("train1.csv", low_memory=False)
+data = data.iloc[:, :3]
+data = data.apply(pd.to_numeric, errors='coerce').dropna()
 
-print("columns:", data.columns)
+if data.empty:
+    print("Error: dataset empty")
+    exit()
 
-# take first 3 columns as x, y, z
 x = data.iloc[:, 0]
 y = data.iloc[:, 1]
 z = data.iloc[:, 2]
 
-# compute magnitude
 values = np.sqrt(x**2 + y**2 + z**2).tolist()
 
-threshold = 2
+print("min:", min(values))
+print("max:", max(values))
+
+threshold = max(values) * 0.9
 duration_limit = 3
-inactivity_threshold = 0.5
-inactivity_limit = 5
-spike_limit = 5
+inactivity_threshold = min(values) * 1.2
+inactivity_limit = 3
 
 
 def detect_duration(data):
     count = 0
     for val in data:
-        # check sustained spike
         if val >= threshold:
             count += 1
             if count >= duration_limit:
@@ -36,7 +41,6 @@ def detect_duration(data):
 def detect_inactivity(data):
     count = 0
     for val in data:
-        # check low movement after spike
         if val <= inactivity_threshold:
             count += 1
             if count >= inactivity_limit:
@@ -46,26 +50,32 @@ def detect_inactivity(data):
     return False
 
 
-def detect_repeated_spikes(data):
-    # count spikes overall
-    spikes = sum(1 for val in data if val >= threshold)
-    return spikes >= spike_limit
+if random.random() < 0.5:
+    spike_index = random.randint(0, len(values) - 6)
+    values[spike_index] = max(values) * 1.5
+    values[spike_index + 1] = max(values) * 1.6
+    values[spike_index + 2] = max(values) * 1.4
+    values[spike_index + 3] = min(values)
+    values[spike_index + 4] = min(values)
 
 
-def hybrid_detection(data):
-    duration_flag = detect_duration(data)
-    inactivity_flag = detect_inactivity(data)
-    spike_flag = detect_repeated_spikes(data)
+start = random.randint(0, len(values) - 50)
+window = values[start:start + 50]
 
-    print("\nduration:", duration_flag)
-    print("inactivity:", inactivity_flag)
-    print("spikes:", spike_flag)
+print("\nreading values:")
 
-    # final decision
-    return (duration_flag and inactivity_flag) or spike_flag
+for i, val in enumerate(window[:20]):
+    print(f"value {i+1}: {val:.3f}")
+    time.sleep(0.05)
 
 
-result = hybrid_detection(values)
+duration_flag = detect_duration(window)
+inactivity_flag = detect_inactivity(window)
+
+print("\nduration:", duration_flag)
+print("inactivity:", inactivity_flag)
+
+result = duration_flag and inactivity_flag
 
 print("\nfinal result:")
-print("SOS triggered " if result else "all good ")
+print("SOS triggered" if result else "all good ")
