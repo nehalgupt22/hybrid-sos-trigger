@@ -1,38 +1,71 @@
-# Hybrid SOS Trigger Analysis System
-# Threshold + Minimum Duration Detection
+import pandas as pd
+import numpy as np
+
+data = pd.read_csv("train1.csv")
+
+print("columns:", data.columns)
+
+# take first 3 columns as x, y, z
+x = data.iloc[:, 0]
+y = data.iloc[:, 1]
+z = data.iloc[:, 2]
+
+# compute magnitude
+values = np.sqrt(x**2 + y**2 + z**2).tolist()
+
+threshold = 2
+duration_limit = 3
+inactivity_threshold = 0.5
+inactivity_limit = 5
+spike_limit = 5
 
 
-walking = [900, 1000, 950, 1020, 980, 1010]
-running = [4000, 6000, 7000, 6500, 7200]
-jumping = [1000, 16000, 900, 1100]
-fall = [1000, 2000, 18000, 19000, 17000, 400]
-struggle = [15000, 16000, 14000, 15500, 13000]
-
-def threshold_duration_detection(data, threshold, min_duration):
+def detect_duration(data):
     count = 0
-    for value in data:
-        if value >= threshold:
+    for val in data:
+        # check sustained spike
+        if val >= threshold:
             count += 1
-            if count >= min_duration:
+            if count >= duration_limit:
                 return True
         else:
             count = 0
     return False
 
 
-print("Hybrid SOS Trigger Analysis System")
+def detect_inactivity(data):
+    count = 0
+    for val in data:
+        # check low movement after spike
+        if val <= inactivity_threshold:
+            count += 1
+            if count >= inactivity_limit:
+                return True
+        else:
+            count = 0
+    return False
 
-threshold = int(input("Enter Threshold Value: "))
-min_duration = int(input("Enter Minimum Duration (consecutive readings): "))
 
-datasets = {
-    "Walking": walking,
-    "Running": running,
-    "Jumping": jumping,
-    "Fall": fall,
-    "Struggle": struggle
-}
+def detect_repeated_spikes(data):
+    # count spikes overall
+    spikes = sum(1 for val in data if val >= threshold)
+    return spikes >= spike_limit
 
-for name, data in datasets.items():
-    result = threshold_duration_detection(data, threshold, min_duration)
-    print(name, "-> SOS Triggered:", result)
+
+def hybrid_detection(data):
+    duration_flag = detect_duration(data)
+    inactivity_flag = detect_inactivity(data)
+    spike_flag = detect_repeated_spikes(data)
+
+    print("\nduration:", duration_flag)
+    print("inactivity:", inactivity_flag)
+    print("spikes:", spike_flag)
+
+    # final decision
+    return (duration_flag and inactivity_flag) or spike_flag
+
+
+result = hybrid_detection(values)
+
+print("\nfinal result:")
+print("SOS triggered 🚨" if result else "all good ✅")
