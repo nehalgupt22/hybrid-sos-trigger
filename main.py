@@ -68,4 +68,4 @@ def hybrid_detection(data):
 result = hybrid_detection(values)
 
 print("\nfinal result:")
-print("SOS triggered 🚨" if result else "all good ✅")
+print("SOS triggered " if result else "all good ")
